@@ -13,6 +13,8 @@ import ast
 import operator
 from datetime import datetime
 
+import httpx
+import trafilatura
 from ddgs import DDGS
 from pydantic_ai import Agent
 
@@ -24,7 +26,10 @@ agent = Agent(
         '\n- Telling the current date and time'
         '\n- Performing calculations'
         '\n- Searching the web for information'
+        '\n- Fetching the content of a URL'
         '\n\nUse these tools when the user asks for the relevant information.'
+        '\nWhen the user asks about the content of a specific page, use fetch_url.'
+        '\nIf you only have a topic, use web_search first, then fetch_url on a promising result.'
     ),
 )
 
@@ -124,6 +129,40 @@ def web_search(query: str) -> str:
         return f"Search error: {type(e).__name__}: {e}"
 
 
+# Tool 4: Fetch a URL and extract main content
+@agent.tool_plain
+def fetch_url(url: str) -> str:
+    """
+    Fetch a URL and return its main readable content as Markdown.
+
+    Use after web_search to get the full content of a promising result.
+
+    Args:
+        url: The URL to fetch.
+    """
+    headers = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/120.0.0.0 Safari/537.36'
+        ),
+    }
+    try:
+        response = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
+        response.raise_for_status()
+
+        content = trafilatura.extract(response.text, output_format='markdown')
+        if not content:
+            return "Could not extract readable content from the page."
+
+        max_length = 8000
+        if len(content) > max_length:
+            content = content[:max_length] + '\n\n… [truncated]'
+        return content
+    except Exception as e:
+        return f"Fetch error: {type(e).__name__}: {e}"
+
+
 def main():
     """Run the interactive chatbot."""
     print("=" * 60)
@@ -133,6 +172,7 @@ def main():
     print("  • Telling the current date/time")
     print("  • Performing calculations")
     print("  • Searching the web")
+    print("  • Fetching the content of a URL")
     print("\nType 'quit' or 'exit' to leave.\n")
 
     messages = []

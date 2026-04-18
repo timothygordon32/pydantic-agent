@@ -7,6 +7,7 @@ An interactive chatbot built with [Pydantic AI](https://ai.pydantic.dev/), demon
 - **Date/time** — returns the current datetime
 - **Calculator** — safely evaluates mathematical expressions via AST
 - **Web search** — queries DuckDuckGo and returns top 3 results
+- **Fetch URL** — retrieves a URL and extracts the main readable content as Markdown (via `httpx` + `trafilatura`)
 
 ## Setup
 
